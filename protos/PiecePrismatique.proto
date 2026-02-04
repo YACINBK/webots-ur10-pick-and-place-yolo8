@@ -1,0 +1,65 @@
+#VRML_SIM R2023b utf8
+
+PROTO PiecePrismatique [
+  field SFVec3f    translation   0 0 0
+  field SFRotation rotation      0 0 1 1.57
+  field SFColor    color         0.2 0.7 0.2
+  field SFString   name          "piece3"
+] {
+  Solid {
+    name IS name
+    translation IS translation
+    rotation IS rotation
+
+    children [
+      Shape {
+        appearance Appearance {
+          material Material {
+            diffuseColor IS color
+          }
+        }
+        geometry Mesh {
+          url "piece.stl"
+          scale 0.001 0.001 0.001
+        }
+      }
+    ]
+
+    # === Couleur de reconnaissance pour RecognitionCamera ===
+    recognitionColors [
+      0.2 0.7 0.2    # couleur RGBA ou RGB, comme pour les Solids Webots
+    ]
+
+    boundingObject Group {
+  children [
+
+
+    # Bloc droit
+    Transform {
+      translation 0.04 0 0.005
+      children [
+        Box {
+          size 0.06 0.08 0.08
+        }
+      ]
+    }
+
+    # Pont central (si nécessaire)
+    Transform {
+      translation 0 0 -0.005
+      children [
+        Box {
+          size 0.14 0.08 0.05
+        }
+      ]
+    }
+
+  ]
+}
+
+    physics Physics {
+      mass -1
+      centerOfMass -0.015 0 0
+    }
+  }
+}

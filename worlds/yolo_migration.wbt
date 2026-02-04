@@ -1,0 +1,339 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/universal_robots/protos/UR10e.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/tables/protos/Table.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/MetalStorageBox.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/devices/robotiq/protos/Robotiq3fGripper.proto"
+EXTERNPROTO "../protos/PiecePrismatique.proto"
+
+WorldInfo {
+}
+Viewpoint {
+  orientation 0.13727222234126532 -0.942235449946565 -0.3055301848221949 5.393274028181623
+  position -4.2330913259159 -1.929551419832996 5.434613775338375
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  translation -0.02 0 0
+  floorSize 10 10
+}
+Robot {
+  translation -0.4 -0.14 0
+  children [
+    Track {
+      translation 0 0 0.44999999999999996
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColorMap ImageTexture {
+              url [
+                "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/textures/rubber/dotted_rubber_base_color.jpg"
+              ]
+            }
+            roughnessMap ImageTexture {
+              url [
+                "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/textures/rubber/dotted_rubber_roughness.jpg"
+              ]
+            }
+            metalness 0
+            normalMap ImageTexture {
+              url [
+                "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/textures/rubber/dotted_rubber_normal.jpg"
+              ]
+            }
+            occlusionMap ImageTexture {
+              url [
+                "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/textures/rubber/dotted_rubber_occlusion.jpg"
+              ]
+            }
+            textureTransform TextureTransform {
+              scale 12 2
+            }
+          }
+          geometry DEF BELT_BO Box {
+            size 3 0.5 0.3
+          }
+        }
+      ]
+      boundingObject USE BELT_BO
+      physics Physics {
+        density -1
+        mass 1
+      }
+      device [
+        LinearMotor {
+          name "belt_motor"
+          maxVelocity 0.5
+          sound ""
+        }
+      ]
+      textureAnimation 0.3333333333333333 0
+    }
+    Shape {
+      appearance PBRAppearance {
+        baseColorMap ImageTexture {
+          url [
+            "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/textures/corrugated_metal/corrugated_metal_base_color.jpg"
+          ]
+        }
+        roughnessMap ImageTexture {
+          url [
+            "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/textures/corrugated_metal/corrugated_metal_roughness.jpg"
+          ]
+        }
+        metalnessMap ImageTexture {
+          url [
+            "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/textures/corrugated_metal/corrugated_metal_metalness.jpg"
+          ]
+        }
+        normalMap ImageTexture {
+          url [
+            "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/textures/corrugated_metal/corrugated_metal_normal.jpg"
+          ]
+        }
+        occlusionMap ImageTexture {
+          url [
+            "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/textures/corrugated_metal/corrugated_metal_occlusion.jpg"
+          ]
+        }
+        textureTransform TextureTransform {
+          scale 2 2
+        }
+      }
+      geometry IndexedFaceSet {
+        coord Coordinate {
+          point [
+            1.53 -0.28 0
+            1.53 -0.28 0.61
+            -1.53 -0.28 0.61
+            -1.53 -0.28 0
+            1.53 0.28 0
+            1.53 0.28 0.61
+            -1.53 0.28 0.61
+            -1.53 0.28 0
+            1.5 -0.25 0.61
+            1.5 0.25 0.61
+            -1.5 0.25 0.61
+            -1.5 -0.25 0.61
+            1.5 -0.25 0.6
+            1.5 0.25 0.6
+            -1.5 0.25 0.6
+            -1.5 -0.25 0.6
+          ]
+        }
+        texCoord TextureCoordinate {
+          point [
+            0 0
+            1 0
+            1 1
+            0 1
+            0 0.3986928104575163
+            1 0.3986928104575163
+            0 0.3986928104575163
+            0.18300653594771243 0.3986928104575163
+            0.18300653594771243 0
+            0 0
+            0.001 0
+            0.001 0.001
+            0 0.001
+          ]
+        }
+        coordIndex [
+          0, 1, 2, 3, -1, 4, 7, 6, 5, -1, 0, 4, 5, 1, -1, 7, 3, 2, 6, -1, 1, 5, 9, 8, -1, 5, 6, 10, 9, -1, 6, 2, 11, 10, -1, 2, 1, 8, 11, -1, 0, 3, 7, 4, -1, 8, 9, 13, 12, -1, 9, 10, 14, 13, -1, 10, 11, 15, 14, -1, 11, 8, 12, 15, -1
+        ]
+        texCoordIndex [
+          1, 5, 4, 0, -1, 0, 1, 5, 4, -1, 0, 8, 7, 6, -1, 0, 8, 7, 6, -1, 9, 10, 11, 12, -1, 9, 10, 11, 12, -1, 9, 10, 11, 12, -1, 9, 10, 11, 12, -1, 9, 10, 11, 12, -1, 9, 10, 11, 12, -1, 9, 10, 11, 12, -1, 9, 10, 11, 12, -1, 9, 10, 11, 12, -1
+        ]
+      }
+    }
+    DistanceSensor {
+      translation 0.659952 0.270272 0.63
+      rotation 0 0 1 -1.57
+      name "ds1"
+      lookupTable [
+        0 0 0
+        0.5 1000 0
+      ]
+    }
+    Emitter {
+      channel 2
+    }
+    Emitter {
+      name "arm_emitter"
+      channel 5
+    }
+    DistanceSensor {
+      translation 0.849952 0.270424 0.63
+      rotation 0 0 1 -1.57
+      name "ds2"
+      lookupTable [
+        0 0 0
+        0.5 1000 0
+      ]
+    }
+    DistanceSensor {
+      translation 1.15995 0.270672 0.62
+      rotation 0 0 1 -1.57
+      name "ds3"
+      lookupTable [
+        0 0 0
+        0.5 1000 0
+      ]
+    }
+    Receiver {
+      channel 3
+    }
+    Receiver {
+      name "arm_receiver"
+      channel 3
+    }
+  ]
+  name "conveyor belt(1)"
+  boundingObject Group {
+    children [
+      Pose {
+        translation 1.515 0 0.305
+        children [
+          Box {
+            size 0.03 0.56 0.61
+          }
+        ]
+      }
+      Pose {
+        translation -1.515 0 0.305
+        children [
+          Box {
+            size 0.03 0.56 0.61
+          }
+        ]
+      }
+      Pose {
+        translation 0 -0.265 0.305
+        children [
+          Box {
+            size 3 0.03 0.61
+          }
+        ]
+      }
+      Pose {
+        translation 0 0.265 0.305
+        children [
+          Box {
+            size 3 0.03 0.61
+          }
+        ]
+      }
+    ]
+  }
+  controller "conveyor_controller"
+  controllerArgs [
+    "0.2"
+    "0"
+  ]
+  window "<none>"
+}
+PiecePrismatique {
+  translation -0.0193466 -0.0351611 0.66
+  rotation -0.2592038987710034 -0.9658226228094736 -1.1460395524278974e-05 -3.141565307179586
+  color 0.333333 0 0
+}
+PiecePrismatique {
+  translation -0.850231 -0.28932 0.65
+  rotation -0.966029666749716 0.00038376686761232905 0.2584309108493482 1.57059
+  color 0.333333 0 0
+}
+PiecePrismatique {
+  translation -1.45011 -0.118844 0.65
+  rotation 1.4573599998299013e-05 -4.587399999464572e-06 0.9999999998832829 -1.0480053071795865
+  color 0.333333 0 0
+}
+Table {
+  translation 3.67318e-08 -1.21 0
+  rotation 0 0 1 1.5708
+  size 1 1.8 0.63
+}
+MetalStorageBox {
+  translation 0.93 -2.33 0
+}
+DEF Cameraman Solid {
+  translation 0.45 0.91 0.6
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 1
+      }
+      geometry Box {
+        size 0.1 0.1 1.2
+      }
+    }
+    Robot {
+      translation -6.74634e-14 -0.45 0.65
+      rotation 0 1 0 1.5708
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0 0 1
+          }
+          geometry Box {
+            size 0.1 1 0.1
+          }
+        }
+        Camera {
+          translation 0 -0.4 -0.05
+          rotation 1 0 0 0
+          children [
+            Receiver {
+              channel 2
+            }
+            Emitter {
+              channel 1
+            }
+          ]
+          recognitionColors [
+            0 0 0
+          ]
+          fieldOfView 1.2
+          width 1024
+          height 768
+          recognition Recognition {
+            maxObjects 1
+            frameThickness 2
+          }
+        }
+      ]
+      controller "camera_controller"
+    }
+  ]
+}
+UR10e {
+  translation 0.850066 -1.07005 0.64
+  rotation 0 0 1 1.5702
+  controller "arm_controller"
+  controllerArgs [
+    ""
+  ]
+  toolSlot [
+    Receiver {
+      channel 1
+    }
+    Receiver {
+      name "conv_receiver"
+      channel 5
+    }
+    Emitter {
+      channel 3
+    }
+    DistanceSensor {
+      translation -3.6732e-07 0.1 0
+      rotation 0 0 1 1.5708
+    }
+    Robotiq3fGripper {
+    }
+  ]
+}
