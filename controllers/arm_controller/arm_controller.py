@@ -165,7 +165,7 @@ class ArmController:
                         pos = [float(x) for x in data_str.split()]
                         if len(pos) >= 4:
                             # Check if this is an abort signal (all zeros)
-                            if pos[0] == 0.0 and pos[1] == 0.0 and pos[2] == 0.0:
+                            if pos[0] == 0.0 and pos[1] == 0.0 and pos[2] == 0.0 and pos[3] == 0.0:
                                 print("[Bras] ABORT signal received - detection failed, staying in WAITING")
                                 self.object_x = 0.0
                                 self.object_angle = 0.0

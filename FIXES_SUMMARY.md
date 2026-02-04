@@ -15,7 +15,7 @@ The primary issue was in `camera_controller.py` where if the camera's recognitio
 **Problem**: Recognition buffer needed more time to populate after STOP signal.
 
 **Fix**: 
-- Increased wait time from 5 to 10 timesteps (160ms → 320ms)
+- Increased wait time from 5 to 10 timesteps (160ms → 320ms at 32ms timestep)
 - Added retry mechanism with 3 attempts
 - Added delays between retries for buffer stabilization
 

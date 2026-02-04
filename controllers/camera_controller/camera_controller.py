@@ -14,6 +14,7 @@ import struct
 import numpy as np
 from controller import Robot
 import math
+import time
 
 
 class CameraController:
@@ -58,7 +59,6 @@ class CameraController:
                         pass
                     self.sock = None
                 if attempt < max_retries - 1:
-                    import time
                     time.sleep(1)
         print("Failed to connect to YOLO server after all retries. Make sure yolo_server.py is running!")
     
