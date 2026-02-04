@@ -96,6 +96,13 @@ class ArmController:
         self.go_down_received = False
         self.object_detected_and_locked = False
         self.translation_back_counter = 0
+        
+        # Timeout management
+        self.waiting_timeout = 30.0  # 30 seconds timeout in WAITING state
+        self.waiting2_timeout = 10.0  # 10 seconds timeout in WAITING2 state
+        self.waiting_start_time = 0.0
+        self.waiting2_start_time = 0.0
+        
         print(f"[Bras] Initialized at your saved pose. Ready.")
 
     def clamp(self, v):
@@ -147,6 +154,8 @@ class ArmController:
 
     def run(self):
         while self.robot.step(self.TIME_STEP) != -1:
+            current_time = self.robot.getTime()
+            
             # --- Check camera receiver (String format) ---
             # Only accept detection data when in WAITING state to prevent feedback loops/instability
             if self.cam_receiver.getQueueLength() > 0:
@@ -155,9 +164,18 @@ class ArmController:
                     try:
                         pos = [float(x) for x in data_str.split()]
                         if len(pos) >= 4:
-                            self.object_x = pos[1]  # Distance relative to camera
-                            self.object_angle = pos[3]
-                            print(f"Objet détecté en x = {self.object_x:.3f} (Angle: {self.object_angle:.2f})")
+                            # Check if this is an abort signal (all zeros)
+                            if pos[0] == 0.0 and pos[1] == 0.0 and pos[2] == 0.0 and pos[3] == 0.0:
+                                print("[Bras] ABORT signal received - detection failed, staying in WAITING")
+                                self.object_x = 0.0
+                                self.object_angle = 0.0
+                                self.object_detected_and_locked = False
+                                self.waiting_start_time = current_time  # Reset timeout
+                            else:
+                                self.object_x = pos[1]  # Distance relative to camera
+                                self.object_angle = pos[3]
+                                print(f"Objet détecté en x = {self.object_x:.3f} (Angle: {self.object_angle:.2f})")
+                                self.waiting_start_time = 0.0  # Clear timeout
                     except ValueError:
                         print(f"Error parsing camera data: {data_str}")
                 
@@ -175,6 +193,20 @@ class ArmController:
 
             # --- State Machine ---
             if self.state == State.WAITING:
+                # Initialize timeout tracking
+                if self.waiting_start_time == 0.0:
+                    self.waiting_start_time = current_time
+                
+                # Check for timeout
+                if current_time - self.waiting_start_time > self.waiting_timeout:
+                    print(f"[Bras] WARNING: WAITING timeout ({self.waiting_timeout}s) - no detection received")
+                    print("[Bras] Resetting state and waiting for next detection...")
+                    self.object_x = 0.0
+                    self.object_angle = 0.0
+                    self.object_detected_and_locked = False
+                    self.waiting_start_time = current_time  # Reset timeout
+                    continue
+                
                 if self.object_x != 0.0 and not self.object_detected_and_locked:
                     # Reset pick cycle flags
                     self.go_down_received = False
@@ -213,11 +245,30 @@ class ArmController:
                 self.state = State.WAITING2
 
             elif self.state == State.WAITING2:
+                # Initialize timeout tracking
+                if self.waiting2_start_time == 0.0:
+                    self.waiting2_start_time = current_time
+                
                 self.wrist3.setPosition(self.object_angle)
+                
+                # Check for timeout
+                if current_time - self.waiting2_start_time > self.waiting2_timeout:
+                    print(f"[Bras] WARNING: WAITING2 timeout ({self.waiting2_timeout}s) - GO_DOWN signal not received")
+                    print("[Bras] Aborting pick cycle and returning to WAITING state")
+                    self.object_x = 0.0
+                    self.object_angle = 0.0
+                    self.object_detected_and_locked = False
+                    self.waiting2_start_time = 0.0
+                    self.state = State.WAITING
+                    # Notify conveyor to restart
+                    self.emitter.send("START_CONV".encode('utf-8'))
+                    continue
+                
                 # Process buffered signal
                 if self.go_down_received:
                     print("[Bras] Buffered GO_DOWN detected, starting descent.")
                     self.go_down_received = False
+                    self.waiting2_start_time = 0.0  # Clear timeout
                     self.state = State.DESCENDING
 
             elif self.state == State.DESCENDING:

@@ -14,6 +14,7 @@ import struct
 import numpy as np
 from controller import Robot
 import math
+import time
 
 
 class CameraController:
@@ -37,22 +38,39 @@ class CameraController:
         
         # State
         self.last_angle = -999.0
+        self.detection_timeout = 5.0  # seconds
+        self.max_detection_retries = 3
     
     def connect_to_yolo_server(self):
         """Establish TCP connection to YOLO server"""
-        try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect(('127.0.0.1', 5050))
-            print("Connected to YOLO server")
-        except Exception as e:
-            print(f"Error connecting to YOLO server: {e}")
-            print("Make sure yolo_server.py is running!")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock.connect(('127.0.0.1', 5050))
+                print("Connected to YOLO server")
+                return
+            except Exception as e:
+                print(f"Error connecting to YOLO server (attempt {attempt + 1}/{max_retries}): {e}")
+                if self.sock:
+                    try:
+                        self.sock.close()
+                    except:
+                        pass
+                    self.sock = None
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+        print("Failed to connect to YOLO server after all retries. Make sure yolo_server.py is running!")
     
     def send_image_to_yolo(self):
         """
         Capture camera image and send to YOLO server
         Returns: angle in degrees from YOLO detection
         """
+        if not self.sock:
+            print("Warning: No connection to YOLO server")
+            return -999.0
+            
         w = self.camera.getWidth()
         h = self.camera.getHeight()
         img_bgra = self.camera.getImage()
@@ -91,6 +109,13 @@ class CameraController:
                 return -999.0
         except Exception as e:
             print(f"Error communicating with YOLO server: {e}")
+            print("Attempting to reconnect...")
+            try:
+                self.sock.close()
+            except:
+                pass
+            self.sock = None
+            self.connect_to_yolo_server()
             return -999.0
     
     def run(self):
@@ -103,36 +128,55 @@ class CameraController:
                 if message == "STOP":
                     print("STOP signal received from conveyor - initiating detection sequence")
                     
-                    # Try detection over several steps to ensure recognition buffer is ready
-                    num_objects = 0
-                    for _ in range(5):
-                        num_objects = self.camera.getRecognitionNumberOfObjects()
+                    # Try detection with multiple attempts
+                    detection_successful = False
+                    for attempt in range(self.max_detection_retries):
+                        print(f"Detection attempt {attempt + 1}/{self.max_detection_retries}")
+                        
+                        # Wait longer for recognition buffer to populate
+                        num_objects = 0
+                        for _ in range(10):  # Increased from 5 to 10 steps
+                            num_objects = self.camera.getRecognitionNumberOfObjects()
+                            if num_objects > 0:
+                                break
+                            self.robot.step(self.timestep)
+                        
+                        # Try YOLO detection
+                        angle_deg = self.send_image_to_yolo()
+                        
                         if num_objects > 0:
+                            objects = self.camera.getRecognitionObjects()
+                            obj = objects[0]
+                            pos = obj.getPosition()
+                            
+                            # Convert angle to radians
+                            angle_rad = 0.0
+                            if angle_deg != -999.0:
+                                angle_rad = angle_deg * math.pi / 180.0
+                            else:
+                                print("Warning: YOLO detection failed, using default angle 0")
+                            
+                            # Prepare data packet as string: "x y z angle_rad"
+                            message = f"{pos[0]} {pos[1]} {pos[2]} {angle_rad}"
+                            self.emitter.send(message.encode('utf-8'))
+                            
+                            print(f"SENT TO ARM → x={pos[0]:.3f} y={pos[1]:.3f} z={pos[2]:.3f} angle(rad)={angle_rad:.3f}")
+                            detection_successful = True
                             break
-                        self.robot.step(self.timestep)
+                        else:
+                            print(f"Warning: No objects detected by camera recognition on attempt {attempt + 1}")
+                            if attempt < self.max_detection_retries - 1:
+                                # Wait before retry
+                                for _ in range(5):
+                                    self.robot.step(self.timestep)
                     
-                    # If internal recognition failed, still try YOLO
-                    angle_deg = self.send_image_to_yolo()
-                    
-                    if num_objects > 0:
-                        objects = self.camera.getRecognitionObjects()
-                        obj = objects[0]
-                        pos = obj.getPosition()
-                        
-                        # Convert angle to radians
-                        # If YOLO failed (-999), we set angle to 0 or leave it
-                        angle_rad = 0.0
-                        if angle_deg != -999.0:
-                            angle_rad = angle_deg * math.pi / 180.0
-                        
-                        # Prepare data packet as string: "x y z angle_rad"
-                        # This avoids UnicodeDecodeError in arm_controller
-                        message = f"{pos[0]} {pos[1]} {pos[2]} {angle_rad}"
-                        self.emitter.send(message.encode('utf-8'))
-                        
-                        print(f"SENT TO ARM → x={pos[0]:.3f} y={pos[1]:.3f} z={pos[2]:.3f} angle(rad)={angle_rad:.3f}")
-                    else:
-                        print("Warning: No objects detected by camera recognition")
+                    if not detection_successful:
+                        print("ERROR: Detection failed after all retries. Sending abort signal to reset system.")
+                        # Send a special "ABORT" message or null position to signal failure
+                        # This prevents the arm from hanging indefinitely
+                        abort_message = "0.0 0.0 0.0 0.0"
+                        self.emitter.send(abort_message.encode('utf-8'))
+                        print("ABORT signal sent to arm to reset state")
                 
                 self.receiver.nextPacket()
     
