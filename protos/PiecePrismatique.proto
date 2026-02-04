@@ -27,7 +27,7 @@ PROTO PiecePrismatique [
 
     # === Couleur de reconnaissance pour RecognitionCamera ===
     recognitionColors [
-      0.2 0.7 0.2    # couleur RGBA ou RGB, comme pour les Solids Webots
+      0.333333 0 0
     ]
 
     boundingObject Group {

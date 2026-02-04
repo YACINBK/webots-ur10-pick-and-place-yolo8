@@ -35,12 +35,12 @@ class ArmController:
     L1 = 0.613
     L2 = 0.637
     
-    # Base positions
-    BASE_SHOULDER_PAN = 0.0
-    BASE_SHOULDER_LIFT = -0.785
-    BASE_ELBOW = 0.785
-    BASE_WRIST1 = -1.57
-    BASE_WRIST2 = -1.57
+    # True Base positions (Matching your saved world file)
+    BASE_SHOULDER_PAN = -0.7796
+    BASE_SHOULDER_LIFT = -0.507
+    BASE_ELBOW = 0.5072
+    BASE_WRIST1 = -1.570
+    BASE_WRIST2 = -1.570
     BASE_WRIST3 = 0.0
     BASE_CURV = BASE_SHOULDER_LIFT + BASE_ELBOW
     
@@ -49,6 +49,7 @@ class ArmController:
     
     def __init__(self, speed=1.2):
         self.robot = Robot()
+        self.timestep = int(self.robot.getBasicTimeStep())
         
         # Motors
         self.shoulder_pan = self.robot.getDevice("shoulder_pan_joint")
@@ -66,28 +67,12 @@ class ArmController:
         
         # Communication
         self.emitter = self.robot.getDevice("emitter")
-        
         self.cam_receiver = self.robot.getDevice("receiver")
-        self.cam_receiver.enable(self.TIME_STEP)
+        self.cam_receiver.enable(self.timestep)
         
         self.conv_receiver = self.robot.getDevice("conv_receiver")
         if self.conv_receiver:
-            self.conv_receiver.enable(self.TIME_STEP)
-            print("[Bras] conv_receiver activé.")
-        else:
-            print("[Bras] ERREUR : conv_receiver non trouvé !")
-        
-        # Initial positions
-        self.shoulder_pan.setPosition(self.BASE_SHOULDER_PAN)
-        self.lift.setPosition(self.BASE_SHOULDER_LIFT)
-        self.elbow.setPosition(self.BASE_ELBOW)
-        self.wrist1.setPosition(self.BASE_WRIST1)
-        self.wrist2.setPosition(self.BASE_WRIST2)
-        self.wrist3.setPosition(self.BASE_WRIST3)
-        
-        # Wait for initial positioning
-        for _ in range(20):
-            self.robot.step(self.TIME_STEP)
+            self.conv_receiver.enable(self.timestep)
         
         # Initial coordinates for IK
         bx0 = self.L1 * math.cos(self.BASE_SHOULDER_LIFT)
@@ -95,10 +80,23 @@ class ArmController:
         self.cx0 = bx0 + self.L2 * math.cos(self.BASE_SHOULDER_LIFT + self.BASE_ELBOW)
         self.cy0 = by0 + self.L2 * math.sin(self.BASE_SHOULDER_LIFT + self.BASE_ELBOW)
         
+        # Sync with world state
+        self.shoulder_pan.setPosition(self.BASE_SHOULDER_PAN)
+        self.lift.setPosition(self.BASE_SHOULDER_LIFT)
+        self.elbow.setPosition(self.BASE_ELBOW)
+        self.wrist1.setPosition(self.BASE_WRIST1)
+        self.wrist2.setPosition(self.BASE_WRIST2)
+        self.wrist3.setPosition(self.BASE_WRIST3)
+        self.robot.step(self.timestep)
+        
+        # State
         self.state = State.WAITING
         self.object_x = 0.0
         self.object_angle = 0.0
+        self.go_down_received = False
+        self.object_detected_and_locked = False
         self.translation_back_counter = 0
+        print(f"[Bras] Initialized at your saved pose. Ready.")
 
     def clamp(self, v):
         return max(-1.0, min(1.0, v))
@@ -150,34 +148,39 @@ class ArmController:
     def run(self):
         while self.robot.step(self.TIME_STEP) != -1:
             # --- Check camera receiver (String format) ---
+            # Only accept detection data when in WAITING state to prevent feedback loops/instability
             if self.cam_receiver.getQueueLength() > 0:
-                data_str = self.cam_receiver.getString()
-                try:
-                    pos = [float(x) for x in data_str.split()]
-                    if len(pos) >= 4:
-                        self.object_x = pos[1]  # Y in Webots corresponds to X in the IK planar logic
-                        self.object_angle = pos[3]
-                        print(f"Objet détecté en x = {self.object_x:.3f}")
-                except ValueError:
-                    print(f"Error parsing camera data: {data_str}")
-                self.cam_receiver.nextPacket()
+                if self.state == State.WAITING:
+                    data_str = self.cam_receiver.getString()
+                    try:
+                        pos = [float(x) for x in data_str.split()]
+                        if len(pos) >= 4:
+                            self.object_x = pos[1]  # Distance relative to camera
+                            self.object_angle = pos[3]
+                            print(f"Objet détecté en x = {self.object_x:.3f} (Angle: {self.object_angle:.2f})")
+                    except ValueError:
+                        print(f"Error parsing camera data: {data_str}")
+                
+                # Always clear the queue to avoid processing stale/accumulated packets
+                while self.cam_receiver.getQueueLength() > 0:
+                    self.cam_receiver.nextPacket()
 
             # --- Check conveyor receiver (String format) ---
             if self.conv_receiver and self.conv_receiver.getQueueLength() > 0:
                 data_str = self.conv_receiver.getString()
-                try:
-                    signal = int(data_str)
-                    print(f"[Bras] Signal reçu : {signal}")
-                    if signal == 1 and self.state == State.WAITING2:
-                        self.state = State.DESCENDING
-                        print("[Bras] Signal GO_DOWN reçu, lancement de la descente.")
-                except ValueError:
-                    print(f"[Bras] Error parsing conveyor signal: {data_str}")
+                if data_str == "1":
+                    self.go_down_received = True
+                    print("[Bras] Signal GO_DOWN reçu (buffered)")
                 self.conv_receiver.nextPacket()
 
             # --- State Machine ---
             if self.state == State.WAITING:
-                if self.object_x != 0.0:
+                if self.object_x != 0.0 and not self.object_detected_and_locked:
+                    # Reset pick cycle flags
+                    self.go_down_received = False
+                    self.object_detected_and_locked = True # Lock out further detections until cycle complete
+                    
+                    # Reset IK geometry based on current BASE_POSE
                     bx0 = self.L1 * math.cos(self.BASE_SHOULDER_LIFT)
                     by0 = self.L1 * math.sin(self.BASE_SHOULDER_LIFT)
                     self.cx0 = bx0 + self.L2 * math.cos(self.BASE_SHOULDER_LIFT + self.BASE_ELBOW)
@@ -185,6 +188,8 @@ class ArmController:
                     
                     self.state = State.TRANSLATING
                     print(f"Début translation horizontal pour x = {self.object_x:.3f}")
+                else:
+                    self.go_down_received = False  # Keep buffer clear if no object
 
             elif self.state == State.TRANSLATING:
                 x_start = 0.0
@@ -209,6 +214,11 @@ class ArmController:
 
             elif self.state == State.WAITING2:
                 self.wrist3.setPosition(self.object_angle)
+                # Process buffered signal
+                if self.go_down_received:
+                    print("[Bras] Buffered GO_DOWN detected, starting descent.")
+                    self.go_down_received = False
+                    self.state = State.DESCENDING
 
             elif self.state == State.DESCENDING:
                 z_start = 0.0
@@ -232,7 +242,8 @@ class ArmController:
             elif self.state == State.GRASPING:
                 print("Grasping piece")
                 for motor in self.hand_motors:
-                    motor.setPosition(0.75)
+                    # Fix: use slightly safer position to avoid joint limit warnings
+                    motor.setPosition(0.4)
                 
                 self.robot.step(self.TIME_STEP)
                 self.state = State.ASCENDING
@@ -277,7 +288,8 @@ class ArmController:
                     self.translation_back_counter -= 1
                 else:
                     self.cx0 = x_end
-                    self.object_x = 0
+                    self.object_x = 0.0
+                    self.object_detected_and_locked = False # Unlock for next cycle
                     print("[Bras] Retour horizontal terminé, début relâchement")
                     self.state = State.RELEASING
 

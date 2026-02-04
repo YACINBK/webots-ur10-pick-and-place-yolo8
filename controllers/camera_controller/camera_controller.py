@@ -101,13 +101,21 @@ class CameraController:
                 message = self.receiver.getString()
                 
                 if message == "STOP":
-                    print("STOP signal received from conveyor")
+                    print("STOP signal received from conveyor - initiating detection sequence")
+                    
+                    # Try detection over several steps to ensure recognition buffer is ready
+                    num_objects = 0
+                    for _ in range(5):
+                        num_objects = self.camera.getRecognitionNumberOfObjects()
+                        if num_objects > 0:
+                            break
+                        self.robot.step(self.timestep)
+                    
+                    # If internal recognition failed, still try YOLO
                     angle_deg = self.send_image_to_yolo()
                     
-                    num_objects = self.camera.getRecognitionNumberOfObjects()
-                    objects = self.camera.getRecognitionObjects()
-                    
                     if num_objects > 0:
+                        objects = self.camera.getRecognitionObjects()
                         obj = objects[0]
                         pos = obj.getPosition()
                         
