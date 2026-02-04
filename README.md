@@ -103,16 +103,26 @@ Conveyor Belt (ds1) → Camera → YOLO Server → Camera → Arm
 - Make sure `yolo_server.py` is running **before** starting Webots
 - Check that port 5050 is not blocked by firewall
 - Verify `best.pt` model file exists in `yolo_server/`
+- **NEW**: Camera controller now automatically retries connection (3 attempts)
 
 ### Camera Not Detecting Objects
 - Ensure objects have `recognitionColors` defined in world file
 - Check camera Recognition API is enabled
 - Verify camera field of view covers the conveyor belt
+- **NEW**: System now retries detection 3 times with longer wait periods
+- **NEW**: If detection fails after all retries, system sends abort signal and continues
 
 ### Arm Not Moving
 - Check that position data is being received (see console output)
 - Verify motor device names match world file
 - Ensure distance sensor threshold (500) is appropriate
+- **NEW**: Arm now has 30-second timeout in WAITING state - will auto-reset if no detection
+- **NEW**: Arm recognizes abort signals and stays ready for next object
+
+### Arm Hanging After Detection
+- **FIXED**: Added timeout protection in WAITING2 state (10 seconds)
+- **FIXED**: Arm will abort pick cycle and return to WAITING if GO_DOWN signal not received
+- Check console for timeout messages if issues persist
 
 ### Gripper Not Grasping
 - Adjust gripper close position (default: 0.85)
@@ -132,8 +142,23 @@ Conveyor Belt (ds1) → Camera → YOLO Server → Camera → Arm
 
 ## Next Steps
 
-- [ ] Test YOLO server independently
-- [ ] Verify individual controllers
+- [x] Test YOLO server independently
+- [x] Verify individual controllers
+- [x] **NEW: Add detection retry logic**
+- [x] **NEW: Add timeout protection for arm states**
+- [x] **NEW: Add YOLO reconnection logic**
+- [x] **NEW: Add abort signal handling**
 - [ ] Run full integration test
 - [ ] Tune parameters for optimal performance
 - [ ] Add multi-object handling
+
+## Recent Improvements (v2)
+
+### Robustness Enhancements
+- ✅ **Detection Retry**: Camera now attempts detection 3 times with longer waits (320ms)
+- ✅ **Abort Handling**: System gracefully handles detection failures without hanging
+- ✅ **Timeout Protection**: Arm has 30s timeout in WAITING, 10s in WAITING2
+- ✅ **Auto-Recovery**: YOLO server automatically reconnects on connection failure
+- ✅ **Better Logging**: Enhanced console output for debugging
+
+See `FIXES_SUMMARY.md` and `INVESTIGATION_REPORT.md` for detailed technical analysis.
